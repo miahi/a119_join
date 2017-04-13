@@ -14,11 +14,11 @@ The scripts uses ffmpeg for video manipulation. If it's not in PATH then the ful
 ## Command line
 
 The full path to the Movie folder on the SD card must be provided as IN_PATH. OUT_PATH is the output path (always requred).
-If the group is not given, the operation is applied to all the groups.
+If the group is not given, the operation is applied to all the groups. Group selection can also use Python's list indexing, so group -1 means the last group.
 
 If the -d parameter is given, all the files in the same day as the given group are selected.
 
-If the output file exists (video or GPX file), it will not be overwritten
+If the output file exists (video or GPX file), it will not be overwritten.
 
 ### List all the recorded files as groups
 
