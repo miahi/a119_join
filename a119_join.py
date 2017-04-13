@@ -11,7 +11,7 @@ import nvtk_mp42gpx
 
 # Path to ffmpeg executable, used for joining video files and timelapses. Not needed for GPX extraction
 # Change to the full path if not in $PATH
-ffmpeg = "C:\\tools\\Avanti-ffmpeg-GUI-092\\ffmpeg\\ffmpeg.exe"
+ffmpeg = "ffmpeg"
 
 
 class VideoFile:
@@ -22,10 +22,13 @@ class VideoFile:
         # first 16 chars in filename are the date and time 2016_1224_094105_116.MP4
         self.date = datetime.strptime(mp4[:16], '%Y_%m%d_%H%M%S')
         self.number = mp4[16:2]
-        self.gpx = None
+        self.gpx = []
+
+    def str_date(self):
+        return str(self.date)
 
     def __str__(self):
-        return self.mp4file + ' @' + str(self.date) + (' gps ' + str(len(self.gpx)) if len(self.gpx) > 0 else '')
+        return self.mp4file + self.str_date() + (' gps ' + str(len(self.gpx)) if len(self.gpx) > 0 else '')
 
     def read_gps(self):
         if not self.gpx:
@@ -34,7 +37,7 @@ class VideoFile:
 
 
 def print_group(i, gr):
-    print 'Group %s [%d]: %s \tTO %s (%d min)\t' % (i, len(gr), gr[0], gr[-1], (gr[-1].date - gr[0].date).total_seconds() / 60, )
+    print 'Group %s [%d files]: %s \tTO %s \t(%d min)\t' % (i, len(gr), gr[0].str_date(), gr[-1].str_date(), (gr[-1].date - gr[0].date).total_seconds() / 60, )
 
 
 # read gps data, filtering the unusable data
@@ -45,9 +48,16 @@ def read_group_gps(gr):
     return filter(None, full_gpx)
 
 
-if __name__ == "__main__":
+def extract_day_group(groups, target_date):
+    res = []
+    for g in groups:
+        check_date = g[0].date
+        if check_date.year == target_date.year and check_date.month == target_date.month and check_date.day == target_date.day:
+            res += g
+    return res
 
 
+def init_parser():
     parser = argparse.ArgumentParser()
 
     group = parser.add_mutually_exclusive_group(required=True)
@@ -63,6 +73,12 @@ if __name__ == "__main__":
     parser.add_argument('-d', action="store_true", help='Process all video from this day (select a group)')
 
     parser.print_help()
+    return parser
+
+
+def main():
+    parser = init_parser()
+
     args = parser.parse_args()
 
     mypath = args.input
@@ -85,21 +101,25 @@ if __name__ == "__main__":
                 groups.append(group)
 
         group.append(f)
-        # f.read_gps()
-        # print f
         last = f
 
+    # List groups
     if args.list:
-        # list groups
         for i, g in enumerate(groups):
             print_group(i, g)
 
+    # Extract GPS data
     if args.gps:
         selected_index = []
         if args.g:
             selected_index = [args.g]
         else:
             selected_index = range(0, len(groups))
+
+        if args.d:
+            # todo: implement
+            print "Day eslection is not supported yet."
+            return
 
         for i in selected_index:
             selected_group = groups[i]
@@ -109,7 +129,7 @@ if __name__ == "__main__":
             print str(len(group_gpx)) + " GPS points found"
             gpx_file_content = nvtk_mp42gpx.get_gpx(group_gpx, selected_group[0])
 
-            out_file = selected_group[0].mp4file + '.gpx'
+            out_file = join(args.out, selected_group[0].mp4fileonly + '.gpx')
 
             if isfile(out_file):
                 print "File %s already exists" % (out_file,)
@@ -118,11 +138,16 @@ if __name__ == "__main__":
                     print("Writing '%s'" % out_file)
                     gpx_file.write(gpx_file_content)
 
+    # Join files
     if args.join:
-
         if args.g:
             group = groups[args.g]
-            out_file = join(args.out, group[0].mp4fileonly + '_join.mp4')
+            if args.d:
+                group = extract_day_group(groups, group[0].date)
+                out_file = join(args.out, 'DAY_' + group[0].mp4fileonly + '_join.mp4')
+            else:
+                out_file = join(args.out, group[0].mp4fileonly + '_join.mp4')
+
             if isfile(out_file):
                 print "File %s already exists" % (out_file,)
             else:
@@ -139,19 +164,12 @@ if __name__ == "__main__":
                 print command
                 subprocess.call(command, shell=True)
 
+    # Join files in 8x timelapse
     if args.timelapse:
-
         if args.g:
             group = groups[args.g]
             if args.d:
-                # add stuff to the group
-                target_date = group[0].date
-                res = []
-                for g in groups:
-                    check_date = g[0].date
-                    if check_date.year == target_date.year and check_date.month == target_date.month and check_date.day == target_date.day:
-                        res += g
-                group = res
+                group = extract_day_group(groups, group[0].date)
                 out_file = join(args.out, 'DAY_' + group[0].mp4fileonly + '_10x.mp4')
             else:
                 out_file = join(args.out, group[0].mp4fileonly + '_10x.mp4')
@@ -164,14 +182,13 @@ if __name__ == "__main__":
                         ffmpeg_filelist.write('file \'%s\'\r\n' % (g.mp4file,))
                     ffmpeg_filelist.flush()
 
-                # timelapse 8x with sound - not fully working, for some reason
-                # command = '%s -y -safe 0 -f concat -i %s -filter:v \"setpts=PTS/8\" -filter:a "atempo=2.0,atempo=2.0,atempo=2.0,atempo=2.0" -c:a libmp3lame -q:a 4 -threads 10 %s' % (
+                # timelapse 8x with sound
+                command = '%s -y -safe 0 -f concat -i %s -filter:v \"setpts=PTS/8\" -filter:a "atempo=2.0,atempo=2.0,atempo=2.0" -c:a libmp3lame -q:a 4 -threads 10 %s' % (ffmpeg, ffmpeg_filelist.name, out_file,)
 
                 # timelapse 8x without sound
-                command = '%s -y -safe 0 -f concat -i %s -filter:v \"setpts=PTS/8\" -an -threads 8 %s' % (
-                    ffmpeg, ffmpeg_filelist.name, out_file,)
+                # command = '%s -y -safe 0 -f concat -i %s -filter:v \"setpts=PTS/8\" -an -threads 8 %s' % (ffmpeg, ffmpeg_filelist.name, out_file,)
 
-                print command
+                print 'Running ' + command
 
                 child = subprocess.Popen(command, shell=True, stderr=subprocess.PIPE)
                 processing = -1
@@ -179,6 +196,7 @@ if __name__ == "__main__":
                 start_time = datetime.now()
                 print start_time
 
+                # Monitors ffmpeg and tries to calculate the speed
                 while True:
                     out = child.stderr.read(1)
                     if out == '' and not child.poll() is None:
@@ -194,6 +212,7 @@ if __name__ == "__main__":
                                 if processing > 0:
                                     estimate = (len(group) - processing) * second / processing
                                 else:
+                                    # estimation based on quad i7
                                     estimate = 40*len(group)
                                 minutes = estimate/60
 
@@ -203,3 +222,7 @@ if __name__ == "__main__":
                                 # sys.stdout.write(line)
                                 sys.stdout.flush()
                             line = ''
+
+
+if __name__ == "__main__":
+    main()
