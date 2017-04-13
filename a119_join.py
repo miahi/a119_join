@@ -118,7 +118,7 @@ def main():
 
         if args.d:
             # todo: implement
-            print "Day eslection is not supported yet."
+            print "Day selection is not supported yet."
             return
 
         for i in selected_index:
