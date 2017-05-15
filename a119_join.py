@@ -3,7 +3,7 @@ import subprocess
 import tempfile
 import sys
 from os import listdir
-from os.path import isfile, join
+from os.path import isfile, join, isdir
 
 from datetime import datetime
 
@@ -87,7 +87,10 @@ def main():
     group = groups[0]
 
     dirfiles = [VideoFile(f, mypath) for f in listdir(mypath) if isfile(join(mypath, f)) and f.endswith('MP4')]
-    rofiles = [VideoFile(f, mypath_ro) for f in listdir(mypath_ro) if isfile(join(mypath_ro, f)) and f.endswith('MP4')]
+    rofiles = []
+    if isdir(mypath_ro):
+        rofiles = [VideoFile(f, mypath_ro) for f in listdir(mypath_ro) if isfile(join(mypath_ro, f)) and f.endswith('MP4')]
+
     allfiles = dirfiles + rofiles
     allfiles.sort(key=lambda x: x.date, reverse=False)
 
