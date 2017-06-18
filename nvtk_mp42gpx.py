@@ -49,26 +49,29 @@ def get_gps_atom(gps_atom_info, f):
     data = f.read(atom_size)
     expected_type = 'free'
     expected_magic = 'GPS '
-    atom_size1, atom_type, magic = struct.unpack_from('>I4s4s', data)
+    try:
+        atom_size1, atom_type, magic = struct.unpack_from('>I4s4s', data)
 
-    # sanity:
-    if atom_size != atom_size1 or atom_type != expected_type or magic != expected_magic:
-        print(
-        "Error! skipping atom at %x (expected size:%d, actual size:%d, expected type:%s, actual type:%s, expected magic:%s, actual maigc:%s)!" % (
-        int(atom_pos), atom_size, atom_size1, expected_type, atom_type, expected_magic, magic))
-        return
+        # sanity:
+        if atom_size != atom_size1 or atom_type != expected_type or magic != expected_magic:
+            print(
+            "Error! skipping atom at %x (expected size:%d, actual size:%d, expected type:%s, actual type:%s, expected magic:%s, actual maigc:%s)!" % (
+            int(atom_pos), atom_size, atom_size1, expected_type, atom_type, expected_magic, magic))
+            return
 
-    hour, minute, second, year, month, day, active, latitude_b, longitude_b, unknown2, latitude, longitude, speed = struct.unpack_from(
-        '<IIIIIIssssfff', data, 48)
+        hour, minute, second, year, month, day, active, latitude_b, longitude_b, unknown2, latitude, longitude, speed = struct.unpack_from(
+            '<IIIIIIssssfff', data, 48)
 
-    time = fix_time(hour, minute, second, year, month, day)
-    latitude = fix_coordinates(latitude_b, latitude)
-    longitude = fix_coordinates(longitude_b, longitude)
-    speed = fix_speed(speed)
+        time = fix_time(hour, minute, second, year, month, day)
+        latitude = fix_coordinates(latitude_b, latitude)
+        longitude = fix_coordinates(longitude_b, longitude)
+        speed = fix_speed(speed)
 
-    # it seems that A indicate reception
-    if active != 'A':
-        # print("Skipping: lost GPS satelite reception. Time: %s." % time)
+        # it seems that A indicate reception
+        if active != 'A':
+            # print("Skipping: lost GPS satelite reception. Time: %s." % time)
+            return
+    except struct.error:
         return
 
     return (latitude, longitude, time, speed)
