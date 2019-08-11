@@ -45,6 +45,9 @@ def get_gps_atom_info(eight_bytes):
 
 def get_gps_atom(gps_atom_info, f):
     atom_pos, atom_size = gps_atom_info
+    if atom_size > 100000:
+        print("Error! Atom too big!")
+        return
     f.seek(atom_pos)
     data = f.read(atom_size)
     expected_type = 'free'

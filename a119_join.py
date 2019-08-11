@@ -130,16 +130,17 @@ def main():
             group_gpx = read_group_gps(selected_group)
 
             print str(len(group_gpx)) + " GPS points found"
-            gpx_file_content = nvtk_mp42gpx.get_gpx(group_gpx, selected_group[0])
+            if len(group_gpx) > 0 :
+                gpx_file_content = nvtk_mp42gpx.get_gpx(group_gpx, selected_group[0])
 
-            out_file = join(args.out, selected_group[0].mp4fileonly + '.gpx')
+                out_file = join(args.out, selected_group[0].mp4fileonly + '.gpx')
 
-            if isfile(out_file):
-                print "File %s already exists" % (out_file,)
-            else:
-                with open(out_file, "w") as gpx_file:
-                    print("Writing '%s'" % out_file)
-                    gpx_file.write(gpx_file_content)
+                if isfile(out_file):
+                    print "File %s already exists" % (out_file,)
+                else:
+                    with open(out_file, "w") as gpx_file:
+                        print("Writing '%s'" % out_file)
+                        gpx_file.write(gpx_file_content)
 
     # Join files
     if args.join:
