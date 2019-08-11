@@ -71,6 +71,7 @@ def init_parser():
 
     parser.add_argument('-g', type=int, help='Select only this group to process')
     parser.add_argument('-d', action="store_true", help='Process all video from this day (select a group)')
+    parser.add_argument('-i', type=int, default=600, help='Max interval in seconds for the same group.')
 
     parser.print_help()
     return parser
@@ -94,11 +95,14 @@ def main():
     allfiles = dirfiles + rofiles
     allfiles.sort(key=lambda x: x.date, reverse=False)
 
+    # interval in seconds between files to be considered as different group
+    interval = args.i
+
     # grouping
     last = allfiles[0]
     for f in allfiles:
         if last:
-            if (f.date - last.date).total_seconds() > 610:
+            if (f.date - last.date).total_seconds() > interval + 10:
                 # print ('--- cut here ---')
                 group = []
                 groups.append(group)
